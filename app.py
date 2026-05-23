@@ -6,7 +6,7 @@ app.secret_key = 'your_secret_key_here'  # Change this to a random secret key
 from src.llm_model import LLMModel
 
 # Initialize the LLM model
-llm = LLMModel(model_name="llama-3.1-8b-instant", temperature=0.7)
+llm = LLMModel(model_name="llama-3.1-8b-instant", temperature=0)
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>

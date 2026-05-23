@@ -8,7 +8,7 @@ load_dotenv()  # Load environment variables from .env file
 GROQ_API_KEY = getenv("GROQ_API_KEY")  # Get the API key from environment variables
 
 class LLMModel:
-    def __init__(self, model_name: str, temperature: float = 0.7):
+    def __init__(self, model_name: str, temperature: float = 0):
         self.model_name = model_name
         self.temperature = temperature
         self.model = ChatGroq(model=self.model_name,
