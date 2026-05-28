@@ -110,8 +110,23 @@ def index():
 @app.route('/chat', methods=['POST'])
 def chat():
     query = request.form.get('query', '').strip()
+
     if not query:
         messages = session.get('messages', [])
+        return render_template_string(HTML_TEMPLATE, messages=messages)
+    
+    counter = session.get('counter', 0) + 1
+    session['counter'] = counter
+    if counter >2:
+        # Get current messages
+        messages = session.get('messages', [{'type': 'bot', 'text': "Hello! I'm here to help you convert natural language queries to SQL. Ask me anything! ** Note: Due to API limitations, you can only ask 2 queries at a time. **"}])
+        
+        # Add user message
+        messages.append({'type': 'user', 'text': query})
+
+        # Add bot message
+        messages.append({'type': 'bot', 'text': "Apologies, but I can only process 2 queries at a time. As i am using free tier of groq api, it has some limitations. Please try again after some time."})
+
         return render_template_string(HTML_TEMPLATE, messages=messages)
     
     # Get current messages
