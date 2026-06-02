@@ -28,7 +28,7 @@ HTML_TEMPLATE = """
         }
         .chat-container {
             width: 100%;
-            max-width: 600px;
+            max-width: 800px;
             height: 80vh;
             background-color: white;
             border-radius: 10px;
@@ -44,19 +44,40 @@ HTML_TEMPLATE = """
         }
         .message {
             margin-bottom: 15px;
-            padding: 10px;
+            padding: 20px;
             border-radius: 10px;
-            max-width: 70%;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
         }
-        .user-message {
-            background-color: #007bff;
-            color: white;
-            align-self: flex-end;
-            margin-left: auto;
+        .query-section {
+            margin-bottom: 15px;
+            color: #0056b3;
+            font-weight: bold;
+            font-size: 1.1em;
         }
-        .bot-message {
-            background-color: #e9ecef;
-            color: black;
+        .query-text {
+            color: #333;
+            font-weight: normal;
+        }
+        .explanation-section {
+            color: #28a745;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .explanation-text {
+            color: #333;
+            font-weight: normal;
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            margin-top: 10px;
+            border-left: 4px solid #28a745;
+        }
+        .error-text {
+            color: #dc3545;
+            font-weight: bold;
         }
         .chat-input {
             padding: 20px;
@@ -70,6 +91,7 @@ HTML_TEMPLATE = """
             border: 1px solid #ccc;
             border-radius: 5px;
             margin-right: 10px;
+            font-size: 1em;
         }
         .chat-input button {
             padding: 10px 20px;
@@ -78,6 +100,7 @@ HTML_TEMPLATE = """
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            font-size: 1em;
         }
         .chat-input button:hover {
             background-color: #0056b3;
@@ -87,9 +110,22 @@ HTML_TEMPLATE = """
 <body>
     <div class="chat-container">
         <div class="chat-messages">
-            {% for msg in messages %}
-            <div class="message {{ 'user-message' if msg.type == 'user' else 'bot-message' }}">{{ msg.text }}</div>
-            {% endfor %}
+            {% if error %}
+            <div class="message">
+                <div class="error-text">Error: {{ error }}</div>
+            </div>
+            {% elif query %}
+            <div class="message">
+                <div class="query-section">Query: <span class="query-text">{{ query }}</span></div>
+                <div class="explanation-section">Explanation:
+                    <div class="explanation-text">{{ sql }}</div>
+                </div>
+            </div>
+            {% else %}
+            <div class="message">
+                <div class="explanation-section">Hello! I'm here to help you convert natural language queries to SQL. Please feel free to ask me anything!<br><br><span style="font-weight: normal; font-size: 0.9em; color: #555;"><i>Please note: As I am currently running on a free-tier API, I can kindly accommodate up to 2 queries per session. Thank you for your understanding!</i></span></div>
+            </div>
+            {% endif %}
         </div>
         <div class="chat-input">
             <form method="post" action="/chat">
@@ -104,49 +140,28 @@ HTML_TEMPLATE = """
 
 @app.route('/')
 def index():
-    messages = session.get('messages', [{'type': 'bot', 'text': "Hello! I'm here to help you convert natural language queries to SQL. Ask me anything!"}])
-    return render_template_string(HTML_TEMPLATE, messages=messages)
+    return render_template_string(HTML_TEMPLATE, query=None, sql=None, error=None)
 
 @app.route('/chat', methods=['POST'])
 def chat():
     query = request.form.get('query', '').strip()
 
     if not query:
-        messages = session.get('messages', [])
-        return render_template_string(HTML_TEMPLATE, messages=messages)
+        return render_template_string(HTML_TEMPLATE, query=None, sql=None, error=None)
     
     counter = session.get('counter', 0) + 1
     session['counter'] = counter
-    if counter >2:
-        # Get current messages
-        messages = session.get('messages', [{'type': 'bot', 'text': "Hello! I'm here to help you convert natural language queries to SQL. Ask me anything! ** Note: Due to API limitations, you can only ask 2 queries at a time. **"}])
-        
-        # Add user message
-        messages.append({'type': 'user', 'text': query})
-
-        # Add bot message
-        messages.append({'type': 'bot', 'text': "Apologies, but I can only process 2 queries at a time. As i am using free tier of groq api, it has some limitations. Please try again after some time."})
-
-        return render_template_string(HTML_TEMPLATE, messages=messages)
-    
-    # Get current messages
-    messages = session.get('messages', [{'type': 'bot', 'text': "Hello! I'm here to help you convert natural language queries to SQL. Ask me anything!"}])
-    
-    # Add user message
-    messages.append({'type': 'user', 'text': query})
+    if counter > 2:
+        error_msg = "Thank you so much for using this service! To ensure fair usage on our free tier, I can currently only process up to 2 queries per session. I would be delighted to assist you further if you try again a little later. Have a wonderful day!"
+        return render_template_string(HTML_TEMPLATE, query=query, sql=None, error=error_msg)
     
     try:
         print(f"Received query: {query}")
         response = llm.generate_sql(query)
         sql = response.content
-        messages.append({'type': 'bot', 'text': sql})
+        return render_template_string(HTML_TEMPLATE, query=query, sql=sql, error=None)
     except Exception as e:
-        messages.append({'type': 'bot', 'text': f'Sorry, there was an error: {str(e)}'})
-    
-    # Save to session
-    session['messages'] = messages
-    
-    return render_template_string(HTML_TEMPLATE, messages=messages)
+        return render_template_string(HTML_TEMPLATE, query=query, sql=None, error=str(e))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
